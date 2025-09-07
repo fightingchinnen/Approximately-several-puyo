@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>約数ぷよ（色は無関係）</title>
+  <style>
+    :root{ --bg:#0b1020;--panel:#121a2f;--grid:#0e1630;--accent:#3ec1d3;--text:#e7eefc }
+    *{box-sizing:border-box;font-family:system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans JP", sans-serif}
+    body{margin:0;background:radial-gradient(1200px 800px at 50% -200px, rgba(62,193,211,.12), transparent 60%),linear-gradient(160deg,#0b1020 0%,#0f1630 100%);color:var(--text);display:flex;align-items:center;justify-content:center;min-height:100vh}
+    .wrap{display:flex;gap:1cm;align-items:center;justify-content:center;position:relative;padding-left:252px} 
+    .panel{background:var(--panel);border:1px solid #28335d;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+    #board{width:288px;height:576px;background:var(--grid);border-radius:16px;overflow:visible;position:relative}
+    canvas{display:block;width:100%;height:100%;border-radius:16px}
+    .side{padding:14px 16px}
+    h1{font-size:18px;margin:0 0 8px;display:flex;gap:8px;align-items:center}
+    .tag{display:inline-block;padding:.2em .6em;border-radius:999px;background:#243263;color:#b7c6ff;font-size:12px}
+    .info{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+    .card{background:#0e1530;border:1px solid #243263;border-radius:12px;padding:8px}
+    .card h3{margin:0 0 4px;font-size:12px;color:#9fb0ff;font-weight:600}
+    .big{font-size:22px;font-weight:800;letter-spacing:.5px}
+    .small{font-size:12px;color:#a9b6d6}
+    .goal{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:10px;border-radius:12px;background:#0e1836;border:1px solid #28407a;margin:8px 0}
+    .goal strong{font-size:20px}
+    .goal .need{font-size:12px;color:#cfe2ff;white-space:nowrap}
+    .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    button{background:#1a2550;color:#e6eeff;border:1px solid #2c3f7b;border-radius:10px;padding:8px 10px;font-weight:700;cursor:pointer}
+    button:hover{background:#223068}
+    .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, monospace;background:#0c1535;border:1px solid #263d7a;padding:2px 6px;border-radius:6px;margin:0 2px}
+    ul{margin:8px 0 0 18px;padding:0}
+    li{margin:2px 0;color:#c9d6ff}
+    .flash{animation:flash 600ms ease-in-out 2}
+    @keyframes flash{50%{box-shadow:0 0 0 4px rgba(62,193,211,.35)}100%{box-shadow:none}}
+    .notice{margin-top:8px;font-size:12px;color:#b9c8ff}
+  .goalTitle{font-size:22px;font-weight:900;margin-bottom:6px;letter-spacing:.5px}
+  .digits{display:flex;flex-wrap:wrap;gap:4px;align-items:center;padding-top:2px} 
+    .dchip{width:28px;height:28px;border-radius:999px;background:#0f1e44;border:1px solid #2c4aa0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:#eaf2ff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}
+    .dchip.ok{background:#14265f;border-color:#3a5ed8}
+    .dchip.dim{opacity:.5}
+    #goalBox .goalTitle{margin-bottom:6px}
+    #goalNumber{font-size:34px;line-height:1;display:inline-block;margin-right:4px}
+  .ovl{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(8,12,24,.65);backdrop-filter:blur(2px)}
+    .ovl.show{display:flex}
+    .ovl .box{background:#0e1836;border:1px solid #28407a;border-radius:16px;padding:16px 18px;text-align:center;box-shadow:0 12px 30px rgba(0,0,0,.35);max-width:260px;width:86%}
+    .ovl h2{margin:0 0 6px;font-size:20px}
+    .ovl p{margin:6px 0;color:#cfe2ff;font-size:12px}
+    .ovl .bigNum{font-size:22px;font-weight:800}
+  .ovl{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(8,12,24,.65);backdrop-filter:blur(2px)}
+    .ovl.show{display:flex}
+    .ovl .box{background:#0e1836;border:1px solid #28407a;border-radius:16px;padding:16px 18px;text-align:center;box-shadow:0 12px 30px rgba(0,0,0,.35);max-width:260px;width:86%}
+    .ovl h2{margin:0 0 6px;font-size:20px}
+    .ovl p{margin:6px 0;color:#cfe2ff;font-size:12px}
+    .ovl .bigNum{font-size:22px;font-weight:800}
+
+    /* ランキング表 */
+    .rank{width:100%;border-collapse:collapse;font-size:12px}
+    .rank th,.rank td{border-bottom:1px solid #243263;padding:4px 6px;text-align:left}
+    .rank th{color:#9fb0ff;font-weight:700}
+    .rank td.r{text-align:right}
+    .rank .muted{color:#7d8bb2;text-align:center}
+    .rankWrap{max-height:180px;overflow:auto}
+    .miniBtn{background:#14214b;border:1px solid #2c3f7b;border-radius:8px;padding:4px 8px;font-weight:700;color:#e6eeff}
+  .rankFloat{position:absolute;top:0;right:100%;margin-right:12px;width:240px;z-index:5}
+    .rankFloat .card{margin:0}
+  .goalRight{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+    .goal .digits{justify-content:flex-start}
+    .goal .dchip{width:24px;height:24px;font-size:14px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="panel" id="board">
+      <canvas id="game" width="288" height="576" aria-label="game-canvas"></canvas>
+      <div id="opening" class="ovl show">
+        <div class="box">
+          <h2>約数ぷよ</h2>
+          <p>約数を3個以上つなげて消そう</p>
+          <div style="margin:8px 0 10px">
+            <label class="small" for="playerNameOpen" style="display:block;margin-bottom:4px">ニックネーム</label>
+            <input id="playerNameOpen" type="text" placeholder="ななし" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #28407a;background:#0b1330;color:#e6efff">
+          </div>
+          <button id="startBtn">スタート</button>
+          <p>Enter / Space でも開始</p>
+        </div>
+      </div>
+      <div id="gameover" class="ovl">
+        <div class="box">
+          <h2>ゲームオーバー</h2>
+          <p>スコア <span class="bigNum" id="finalScore">0</span><br>レベル <span class="bigNum" id="finalLevel">1</span></p>
+          <button id="againBtn">もう一度</button>
+          <p>Enter / Space でも再開</p>
+        </div>
+      </div>
+    <div class="rankFloat">
+        <div class="card" id="rankCard" style="margin-top:0">
+          <h3>ランキング</h3>
+          <div class="small" style="margin-bottom:6px">
+            ニックネーム：<span id="playerNameLabel">未設定</span>
+            <button id="clearRank" class="miniBtn" style="margin-left:6px">リセット</button>
+          </div>
+          <div class="rankWrap">
+            <table class="rank">
+              <thead><tr><th>#</th><th>名前</th><th>スコア</th><th>Lv</th><th>日付</th></tr></thead>
+              <tbody id="rankBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="panel side">
+      <h1>約数ぷよ</h1>
+      <div class="card goal" id="goalBox">
+        <div class="goalLeft">
+          <span id="goalNumber" class="goalTitle">--</span>
+          <span class="small"> の約数</span>
+        </div>
+        <div class="digits" id="goalDigits"></div>
+        <div class="need">お題変更まで<br>あと <strong id="need">3</strong> 回</div>
+      </div>
+      
+
+      <div class="info">
+        <div class="card"><h3>スコア</h3><div class="big" id="score">0</div><div class="small">消去回数: <span id="pops">0</span></div></div>
+        <div class="card"><h3>レベル</h3><div class="big" id="level">1</div><div class="small">速度↑で難しく</div></div>
+      </div>
+
+      <div class="card">
+        <h3>操作</h3>
+        <div class="small">
+          <span class="kbd">←</span><span class="kbd">→</span> 移動<br>
+          <span class="kbd">↑</span> 回転<br>
+          <span class="kbd">↓</span> 落下<br>
+          <span class="kbd">Space</span> ハードドロップ<br>
+          <span class="kbd">P</span> 一時停止
+        </div>
+      </div>
+
+      <div class="btns">
+        <button id="restart">リスタート</button>
+        <button id="pauseBtn">一時停止</button>
+        <button id="homeBtn">ホーム</button>
+      </div>
+
+      <div class="card">
+        <h3>ルール</h3>
+        <ul>
+          <li>お題の約数だけで <strong style="font-size:18px">３個以上</strong> つなげたら消える。</li>
+          <li><strong style="font-size:18px">３回消したら</strong>、お題変更。</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+
+<script>
+(()=>{
+  // ====== 基本設定 ======
+  const COLS = 6, ROWS = 12, CELL = 48; // 288x576（大ぷよ）
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+
+  const scoreEl = document.getElementById('score');
+  const popsEl = document.getElementById('pops');
+  const levelEl = document.getElementById('level');
+  const goalBox = document.getElementById('goalBox');
+  const goalDigitsEl = document.getElementById('goalDigits');
+  const goalNumberEl = document.getElementById('goalNumber');
+  const needEl = document.getElementById('need');
+
+  const pauseBtn = document.getElementById('pauseBtn');
+  const restartBtn = document.getElementById('restart');
+  const openingEl = document.getElementById('opening');
+  const gameoverEl = document.getElementById('gameover');
+  const startBtn = document.getElementById('startBtn');
+  const againBtn = document.getElementById('againBtn');
+  const finalScore = document.getElementById('finalScore');
+  const finalLevel = document.getElementById('finalLevel');
+  const nameInputOpen = document.getElementById('playerNameOpen');
+  const nameLabel = document.getElementById('playerNameLabel');
+  const clearRankBtn = document.getElementById('clearRank');
+  const rankBody = document.getElementById('rankBody');
+  const homeBtn  = document.getElementById('homeBtn');
+
+  const COLORS = ['#64b5f6','#ff8a65','#81c784','#ba68c8','#ffd54f']; // 見た目用のみ
+
+  // ====== ゲーム状態 ======
+  let field, falling, nextTick, dropInterval, lastTime, paused;
+  let score, level, qualifiedPops; // 条件消去回数
+  let currentGoal, needCount;      // 3回でお題変更
+
+  // アニメーション＆演出状態
+  let animating = false;           // 消去エフェクト中は落下を停止
+  let clearGroups = [];            // 今回消すグループ
+  let animT = 0;                   // 0→1 の時間正規化
+  let chainStep = 0;               // 連鎖段（1,2,3...）
+  let particles = [];              // 花火粒子
+  let floatTexts = [];             // フローティングテキスト
+  let shakeTime = 0, shakeMag = 0; // 画面シェイク
+  let fxLast = 0;                  // エフェクト更新用の前フレーム時刻
+  let stage = 0;                   // 0:opening, 1:playing, 2:gameover
+
+  // 1マスのデータ: {color:number, num:1-9}
+  function newField(){ field = Array.from({length: ROWS}, ()=> Array.from({length: COLS}, ()=> null)); }
+  function randomInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a }
+  function rand(a,b){ return Math.random()*(b-a)+a }
+  // 正解の約数チップの重み: 10レベルごとに1ずつ減少（下限1）
+  function correctWeight(){
+    const dec = Math.floor((level-1)/10); // Lv1-10:0, 11-20:1, 21-30:2 ...
+    return Math.max(1, 5 - dec);
+  }
+
+  // 落下する数字の出現分布：
+  // お題の約数チップ（1を除く）に一致する数字を重み付けして多めに出す
+  function pickSpawnNum(){
+    const bag=[];
+    // 1桁（1〜9）は常に候補。約数(1除く)は多めに出す
+    for(let n=1;n<=9;n++){
+      let w = 1;
+      if(n!==1 && currentGoal && currentGoal % n === 0) w = correctWeight();
+      for(let i=0;i<w;i++) bag.push(n);
+    }
+    // Lv10以降は、2けたの約数(10〜99)も落下候補に追加
+    if(level >= 10 && currentGoal){
+      const ds = divisors(currentGoal);
+      for(const d of ds){
+        if(d>=10 && d<=99){
+          for(let i=0;i<correctWeight();i++) bag.push(d);
+        }
+      }
+    }
+    return bag[randomInt(0, bag.length-1)];
+  }
+
+
+  function randomGoal(){
+    // Lv1〜20: ≤36の“よく出る数”から（小さな約数が多いほど重み）
+    if(level <= 20){
+      const common = [6,8,9,10,12,14,15,16,18,20,21,24,25,27,28,30,32,36];
+      const cands = [];
+      for(const n of common){
+        const w = 1 + Math.floor(divisors(n).filter(x=>x<=9).length/2);
+        for(let k=0;k<w;k++) cands.push(n);
+      }
+      return cands[randomInt(0, cands.length-1)];
+    }
+    // Lv21+: 12〜72から、素数や小さい約数が少ない数を除外
+    const cands=[];
+    for(let n=12; n<=72; n++){
+      const dSmall = divisors(n).filter(x=>x<=9);
+      if(isPrime(n)) continue;
+      if(dSmall.length < 3) continue;
+      const w = 1 + Math.floor(dSmall.length/2);
+      for(let k=0;k<w;k++) cands.push(n);
+    }
+    return cands[randomInt(0, cands.length-1)];
+  }
+
+  function divisors(n){ const ds=[]; for(let i=1;i<=n;i++){ if(n%i===0) ds.push(i) } return ds }
+  function isPrime(n){ if(n<2) return false; for(let i=2;i*i<=n;i++) if(n%i===0) return false; return true }
+
+  // お題の表示：約数だけ（大きく）
+  function renderGoalDigits(){
+    if(!goalDigitsEl) return;
+    if(goalNumberEl) goalNumberEl.textContent = currentGoal;
+    const dsAll = divisors(currentGoal).sort((a,b)=>a-b);
+    goalDigitsEl.innerHTML = dsAll.map(d=>{
+      const dim = (level < 10) && d > 9; // Lv10未満は2けたを薄表示
+      return `<div class="dchip ${dim?'dim':'ok'}">${d}</div>`;
+    }).join('');
+  }
+
+  // ====== 2個組の落下ぷよ ======
+  // falling = {x,y, dir:0..3, a:{color,num}, b:{color,num}}
+  function spawnPair(){
+    const a={color: randomInt(0,COLORS.length-1), num: pickSpawnNum()}
+    const b={color: randomInt(0,COLORS.length-1), num: pickSpawnNum()}
+    falling={x: Math.floor(COLS/2), y: -1, dir:0, a, b}
+    if(collidePair(falling, field, falling.x, falling.y+1)){
+      gameOver();
+    }
+  }
+  function bOffset(dir){ return [ {x:0,y:-1}, {x:1,y:0}, {x:0,y:1}, {x:-1,y:0} ][dir%4] }
+  function collidePair(p, f, nx=p.x, ny=p.y, nd=p.dir){
+    const off=bOffset(nd);
+    const cells=[ {x:nx, y:ny}, {x:nx+off.x, y:ny+off.y} ];
+    for(const c of cells){
+      if(c.y<0) continue;
+      if(c.x<0 || c.x>=COLS || c.y>=ROWS) return true;
+      if(f[c.y][c.x]) return true;
+    }
+    return false;
+  }
+  function lockPair(){
+    const off=bOffset(falling.dir);
+    const cells=[ {x:falling.x, y:falling.y, data:falling.a}, {x:falling.x+off.x, y:falling.y+off.y, data:falling.b} ];
+    for(const c of cells){ if(c.y>=0) field[c.y][c.x] = {color:c.data.color, num:c.data.num}; }
+  }
+
+  // ====== 消去（約数のみ）& 落下 ======
+  function resolve(){
+    if(animating) return; // 重複防止
+    const groups = findGroups();
+    if(groups.length===0) return;
+    if(chainStep===0) chainStep=1; // 連鎖開始
+    startClear(groups, chainStep);
+  }
+
+  function startClear(groups, step){
+    clearGroups = groups; animT = 0; animating = true;
+    // エフェクト仕込み
+    spawnParticlesForGroups(groups, step);
+    if(step>=2) addFloatText(`${step}連鎖！`, canvas.width/2, 56, step);
+    shakeTime = 220 + step*80; shakeMag = 2.5 + step*1.5;
+    animateClear();
+  }
+
+  function finalizeClear(){
+    let totalScore = 0;
+    let qualifiedGroups = clearGroups.length;
+    for(const g of clearGroups){
+      totalScore += g.cells.length * (10 + chainStep*2);
+      for(const {x,y} of g.cells){ field[y][x]=null }
+    }
+    applyGravity();
+
+    if(totalScore>0){
+      score += totalScore;
+      qualifiedPops += qualifiedGroups;
+      needCount -= qualifiedGroups;
+
+      // スコア200ごとにレベルアップ
+      const newLevel = Math.floor(score / 200) + 1;
+      if(newLevel !== level){
+        level = newLevel;
+        dropInterval = Math.max(90, 800 - (level-1)*45);
+      }
+
+      // お題変更
+      if(needCount<=0){
+        currentGoal = randomGoal();
+        needCount = 3;
+        renderGoalDigits();
+        toast(`お題変更！ ${currentGoal} の約数だけで3つ以上つなげて消そう`);
+      }
+    }
+
+    clearGroups = [];
+    animating = false;
+
+    const more = findGroups();
+    if(more.length>0){
+      chainStep++;
+      startClear(more, chainStep);
+    }else{
+      chainStep = 0; // 連鎖終了
+    }
+  }
+
+  function findGroups(){
+    const vis=Array.from({length: ROWS}, ()=> Array(COLS).fill(false));
+    const groups=[]; const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+    for(let y=0;y<ROWS;y++){
+      for(let x=0;x<COLS;x++){
+        const cell=field[y][x];
+        if(!cell || vis[y][x]) continue;
+        if(currentGoal % cell.num !== 0) continue; // 約数だけ対象
+        const q=[[x,y]]; vis[y][x]=true; const comp=[{x,y}];
+        while(q.length){
+          const [cx,cy]=q.shift();
+          for(const [dx,dy] of dirs){
+            const nx=cx+dx, ny=cy+dy; if(nx<0||nx>=COLS||ny<0||ny>=ROWS) continue;
+            if(vis[ny][nx]) continue; const c2=field[ny][nx]; if(!c2) continue;
+            if(currentGoal % c2.num !== 0) continue; // 約数のみ連結
+            vis[ny][nx]=true; q.push([nx,ny]); comp.push({x:nx,y:ny});
+          }
+        }
+        if(comp.length>=3) groups.push({cells:comp});
+      }
+    }
+    return groups;
+  }
+
+  function applyGravity(){
+    for(let x=0;x<COLS;x++){
+      let write=ROWS-1;
+      for(let y=ROWS-1;y>=0;y--){
+        if(field[y][x]){ if(y!==write){ field[write][x]=field[y][x]; field[y][x]=null; } write--; }
+      }
+      for(let y=write;y>=0;y--) field[y][x]=null;
+    }
+  }
+
+  // ====== 演出ユーティリティ ======
+  function hexToRgb(hex){
+    hex = (hex||'').replace('#','');
+    if(hex.length!==6) return {r:255,g:255,b:255};
+    return { r:parseInt(hex.slice(0,2),16), g:parseInt(hex.slice(2,4),16), b:parseInt(hex.slice(4,6),16) };
+  }
+  function spawnParticlesForGroups(groups, step){
+    for(const g of groups){
+      for(const {x,y} of g.cells){
+        const cell=field[y][x]; if(!cell) continue;
+        const base = hexToRgb(COLORS[cell.color]);
+        const count = 6 + Math.min(14, step*5); // 連鎖で粒子増量
+        for(let i=0;i<count;i++){
+          const ang = rand(0, Math.PI*2);
+          const spd = rand(80, 220) * (1 + step*0.08);
+          particles.push({
+            x: x*CELL + CELL/2,
+            y: y*CELL + CELL/2,
+            vx: Math.cos(ang)*spd,
+            vy: Math.sin(ang)*spd,
+            life: 0, max: rand(0.35, 0.8),
+            size: rand(1.2, 2.4) * (1 + step*0.1),
+            color: base
+          })
+        }
+      }
+    }
+  }
+  function addFloatText(text,x,y,step){
+    floatTexts.push({text,x,y,vy: 22 + step*6, life:0, max:0.9 + step*0.1})
+  }
+
+  // ====== 描画 ======
+  function drawCell(x,y,color,num){
+    const px=x*CELL, py=y*CELL;
+    ctx.fillStyle = COLORS[color];
+    ctx.beginPath(); ctx.arc(px+CELL/2, py+CELL/2, CELL*0.42, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.18)'; ctx.beginPath(); ctx.arc(px+CELL*0.38, py+CELL*0.38, CELL*0.18, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#081020';
+    const f = (num>=10? 18 : 22);
+    ctx.font = `bold ${f}px ui-monospace, monospace`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(String(num), px+CELL/2, py+CELL/2+1);
+    if(currentGoal && currentGoal % num === 0){
+      ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.7)';
+      ctx.beginPath(); ctx.arc(px+CELL/2, py+CELL/2, CELL*0.44, 0, Math.PI*2); ctx.stroke();
+    }
+  }
+  function drawField(){
+    for(let y=0;y<ROWS;y++){
+      for(let x=0;x<COLS;x++){
+        ctx.fillStyle = y%2===0? 'rgba(255,255,255,.02)':'rgba(255,255,255,.03)';
+        ctx.fillRect(x*CELL, y*CELL, CELL, CELL)
+        const c=field[y][x]; if(c) drawCell(x,y,c.color,c.num)
+      }
+    }
+  }
+
+  function drawOverlayFlash(){
+    if(!animating) return;
+    const a = (1-animT)*0.22 * Math.min(1, 0.6+chainStep*0.25);
+    ctx.fillStyle = `rgba(255,255,255,${a})`;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
+
+  function drawParticles(){
+    for(const p of particles){
+      const alpha = Math.max(0, 1 - p.life/p.max);
+      ctx.fillStyle = `rgba(${p.color.r},${p.color.g},${p.color.b},${alpha})`;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+    }
+  }
+  function updateParticles(dt){
+    const g = 560; // 重力(px/s^2)
+    particles = particles.filter(p=> (p.life+=dt) < p.max);
+    for(const p of particles){ p.x += p.vx*dt; p.y += p.vy*dt; p.vy += g*dt; }
+  }
+
+  function drawFloatTexts(){
+    for(const ft of floatTexts){
+      const a = Math.max(0, 1 - ft.life/ft.max);
+      ctx.save();
+      ctx.fillStyle = `rgba(255,255,255,${a})`;
+      ctx.font = `bold ${20+Math.min(28, chainStep*6)}px system-ui, sans-serif`;
+      ctx.textAlign='center'; ctx.textBaseline='bottom';
+      ctx.shadowColor = 'rgba(62,193,211,.6)'; ctx.shadowBlur = 8;
+      ctx.fillText(ft.text, ft.x, ft.y);
+      ctx.restore();
+    }
+  }
+  function updateFloatTexts(dt){
+    floatTexts = floatTexts.filter(ft=> (ft.life+=dt) < ft.max);
+    for(const ft of floatTexts){ ft.y -= ft.vy*dt }
+  }
+
+  function applyScreenShake(){
+    if(shakeTime<=0) return; const s = Math.min(shakeMag, shakeMag*(shakeTime/320));
+    ctx.translate(rand(-s,s), rand(-s,s));
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height)
+    ctx.save();
+    applyScreenShake();
+    drawField();
+
+    // 消去中エフェクト（白フラッシュ + リング + スパーク）
+    if(animating && clearGroups.length){
+      for(const g of clearGroups){
+        for(const {x,y} of g.cells){
+          const px=x*CELL+CELL/2, py=y*CELL+CELL/2;
+          const a = 1 - animT; // 1→0
+          // 1) 白フラッシュ
+          ctx.globalAlpha = Math.max(0,a*0.9);
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath(); ctx.arc(px, py, CELL*0.44*(1+0.25*(1-a)), 0, Math.PI*2); ctx.fill();
+          ctx.globalAlpha = 1;
+          // 2) リング（ショックウェーブ）
+          ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+          ctx.lineWidth = 2.4*(1-animT);
+          ctx.beginPath(); ctx.arc(px, py, CELL*0.18 + animT*CELL*0.5, 0, Math.PI*2); ctx.stroke();
+        }
+      }
+    }
+
+    drawOverlayFlash();
+    drawParticles();
+
+    // 落下ぷよ
+    if(falling){ const off=bOffset(falling.dir); const parts=[{x:falling.x,y:falling.y,data:falling.a},{x:falling.x+off.x,y:falling.y+off.y,data:falling.b}]; for(const p of parts){ if(p.y>=0) drawCell(p.x,p.y,p.data.color,p.data.num) } }
+
+    drawFloatTexts();
+    ctx.restore();
+
+    // サイド表示
+    scoreEl.textContent=score; popsEl.textContent=qualifiedPops; levelEl.textContent=level; needEl.textContent=needCount;
+  }
+
+  // ====== 消去アニメーション制御 ======
+  function animateClear(){
+    const DUR = 420; // ms（派手に）
+    let start, prev;
+    function frame(t){
+      if(!start){ start=t; prev=t }
+      const elapsed=t-start; const dt=(t-prev)/1000; prev=t;
+      animT = Math.min(1, elapsed/DUR);
+      updateParticles(dt); updateFloatTexts(dt); if(shakeTime>0) shakeTime -= dt*1000;
+      draw();
+      if(animT < 1){ requestAnimationFrame(frame); }
+      else{ finalizeClear(); }
+    }
+    requestAnimationFrame(frame);
+    goalBox.classList.add('flash'); setTimeout(()=>goalBox.classList.remove('flash'),250)
+  }
+
+  // ====== 進行 ======
+  function step(time){
+    if(paused){ requestAnimationFrame(step); return }
+    if(!lastTime) lastTime = time; const delta=time-lastTime;
+    if(delta>dropInterval){ lastTime=time; tick() }
+
+    // エフェクト（粒子・フロートテキスト・シェイク）は常時更新
+    if(!fxLast) fxLast = time; const dt=(time - fxLast)/1000; fxLast = time;
+    if(!animating){ // アニメーション中は animateClear 側で更新
+      updateParticles(dt); updateFloatTexts(dt); if(shakeTime>0) shakeTime -= dt*1000;
+    }
+
+    draw(); nextTick=requestAnimationFrame(step)
+  }
+  function tick(){
+    if(animating) return; // 演出中は進めない
+    if(!falling){ spawnPair(); return }
+    if(!collidePair(falling, field, falling.x, falling.y+1)){
+      falling.y++;
+    }else{
+      lockPair();
+      falling=null;
+      resolve(); // ここで消去→演出→確定→連鎖
+      if(!animating) spawnPair();
+    }
+  }
+
+  // ====== 入力 ======
+  function move(dx){ if(!falling||animating) return; if(!collidePair(falling, field, falling.x+dx, falling.y)) falling.x+=dx }
+  function softDrop(){ if(!falling||animating) return; if(!collidePair(falling, field, falling.x, falling.y+1)) falling.y++ }
+  function hardDrop(){ if(!falling||animating) return; while(!collidePair(falling, field, falling.x, falling.y+1)) falling.y++; lockPair(); falling=null; resolve(); if(!animating) { spawnPair(); draw() } }
+  function rotateCW(){ if(!falling||animating) return; const nd=(falling.dir+1)&3; if(!collidePair(falling, field, falling.x, falling.y, nd)) falling.dir=nd }
+
+  window.addEventListener('keydown', e=>{
+    // Opening / GameOver 中は Enter/Space で開始
+    if(stage!==1){
+      if(e.code==='Enter'||e.code==='Space'){ e.preventDefault(); startGame(); }
+      return;
+    }
+    if(e.code==='ArrowLeft'){ e.preventDefault(); move(-1) }
+    else if(e.code==='ArrowRight'){ e.preventDefault(); move(1) }
+    else if(e.code==='ArrowDown'){ e.preventDefault(); softDrop() }
+    else if(e.code==='ArrowUp'){ e.preventDefault(); rotateCW() }
+    else if(e.code==='Space'){ e.preventDefault(); hardDrop() }
+    else if(e.code==='KeyP'){ pause() }
+  })
+
+  // ====== 汎用 ======
+  function pause(forceStop=false){ if(forceStop){ paused=true; cancelAnimationFrame(nextTick); return } paused=!paused; pauseBtn.textContent = paused? '再開':'一時停止' }
+  function reset(){ newField(); score=0; level=1; dropInterval=800; lastTime=0; paused=false; falling=null; qualifiedPops=0; currentGoal=randomGoal(); needCount=3; renderGoalDigits(); animating=false; clearGroups=[]; animT=0; chainStep=0; particles=[]; floatTexts=[]; shakeTime=0; shakeMag=0; fxLast=0; ctx.setTransform(1,0,0,1,0,0); draw(); cancelAnimationFrame(nextTick); requestAnimationFrame(step) }
+  function toast(msg){
+    const el=document.createElement('div');
+    el.textContent=msg;
+    Object.assign(el.style,{
+      position:'fixed',bottom:'20px',left:'50%',transform:'translateX(-50%)',
+      background:'#0e1836',color:'#e6efff',border:'1px solid #28407a',
+      padding:'10px 14px',borderRadius:'12px',boxShadow:'0 12px 30px rgba(0,0,0,.35)',
+      zIndex:10,opacity:0,transition:'opacity .2s, transform .2s'
+    });
+    document.body.appendChild(el);
+    requestAnimationFrame(()=>{el.style.opacity=1; el.style.transform='translateX(-50%) translateY(-6px)'});
+    setTimeout(()=>{el.style.opacity=0; el.style.transform='translateX(-50%)'; setTimeout(()=>el.remove(),200)},1800);
+  }
+
+  // ====== ランキング（ローカル保存） ======
+  const LS_NAME='yp_name', LS_SCORE='yp_scores';
+  const escapeHtml = s => String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;' }[c]));
+  function loadScores(){ try{ return JSON.parse(localStorage.getItem(LS_SCORE)||'[]') }catch(e){ return [] } }
+  function saveScores(arr){ localStorage.setItem(LS_SCORE, JSON.stringify(arr)) }
+  function addScoreEntry(name, score, level){
+    const arr = loadScores();
+    arr.push({name, score, level, t: Date.now()});
+    arr.sort((a,b)=> b.score - a.score || a.t - b.t);
+    while(arr.length>20) arr.pop();
+    saveScores(arr); renderLeaderboard(arr);
+  }
+  function renderLeaderboard(arr=null){
+    if(!rankBody) return; const data = arr || loadScores();
+    const pad=n=>String(n).padStart(2,'0');
+    rankBody.innerHTML = data.slice(0,10).map((r,i)=>{
+      const d=new Date(r.t); const ds=`${d.getMonth()+1}/${pad(d.getDate())}`;
+      return `<tr><td>${i+1}</td><td>${escapeHtml(r.name).slice(0,10)}</td><td class="r">${r.score}</td><td class="r">${r.level}</td><td>${ds}</td></tr>`
+    }).join('') || '<tr><td colspan="5" class="muted">記録なし</td></tr>';
+  }
+  function initLeaderboard(){
+    const nm = localStorage.getItem(LS_NAME)||'';
+    if(nameInputOpen) nameInputOpen.value = nm;
+    if(nameLabel) nameLabel.textContent = nm || '未設定';
+    renderLeaderboard();
+  }
+  if(nameInputOpen){
+    nameInputOpen.addEventListener('input', ()=>{
+      const v = nameInputOpen.value.trim();
+      localStorage.setItem(LS_NAME, v);
+      if(nameLabel) nameLabel.textContent = v || '未設定';
+    });
+  }
+  if(clearRankBtn){
+    clearRankBtn.addEventListener('click', ()=>{
+      localStorage.removeItem(LS_SCORE);
+      renderLeaderboard([]);
+    });
+  }
+  pauseBtn.addEventListener('click', ()=> pause());
+  if(restartBtn) restartBtn.addEventListener('click', ()=> startGame());
+  if(startBtn) startBtn.addEventListener('click', ()=> startGame());
+  if(againBtn) againBtn.addEventListener('click', ()=> startGame());
+  if(homeBtn)  homeBtn.addEventListener('click', ()=> goHome());
+
+  // 画面制御関数
+  function showOpening(){ stage=0; paused=true; cancelAnimationFrame(nextTick); openingEl.classList.add('show'); gameoverEl.classList.remove('show'); }
+  function startGame(){
+    if(nameInputOpen){
+      const v = nameInputOpen.value.trim();
+      localStorage.setItem(LS_NAME, v);
+      if(nameLabel) nameLabel.textContent = v || '未設定';
+    }
+    if(openingEl) openingEl.classList.remove('show'); if(gameoverEl) gameoverEl.classList.remove('show');
+    stage=1; reset();
+  }
+  function gameOver(){
+    stage=2; paused=true; cancelAnimationFrame(nextTick);
+    // ランキング登録
+    const name = (nameInputOpen && nameInputOpen.value.trim()) || 'ななし';
+    addScoreEntry(name, score, level);
+    if(finalScore) finalScore.textContent=score; if(finalLevel) finalLevel.textContent=level;
+    gameoverEl.classList.add('show');
+  }
+
+  // 初期表示：オープニング
+  function goHome(){ showOpening(); }
+  initLeaderboard();
+  showOpening();
+})();
+</script>
+</body>
+</html>
